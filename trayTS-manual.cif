@@ -1,0 +1,42 @@
+svgfile "trayTS.svg";
+
+// Used for actuators that can be clicked in the SVG visualization
+automaton def Button(alg string name):
+    uncontrollable u_press;
+    location off:
+        initial;
+        edge u_press goto on;   // toggle button state after each press
+
+    location on:
+         edge u_press goto off; // toggle button state after each press
+
+    svgin  id name event u_press;
+end
+
+automaton def AutoResetButton(alg string name):
+    uncontrollable u_press;
+    cont t = 0;
+
+    location off:
+        initial;
+        equation t' = 0;
+        edge u_press goto on;   // toggle button state after each press
+
+    location on:
+        equation t' = 1;
+        edge when t >= 0.5 do t := 0 goto off; // toggle button state after each press
+
+    svgin  id name event u_press;
+end
+
+// processing actuators
+alg bool a_ls_power        = button_ls_power.on;
+alg bool a_ss_power        = button_ss_power.on;
+alg bool a_feed_tray       = button_feed_tray.on;
+alg bool a_holder_opened   = button_holder_opened.on;
+
+//manual buttons
+button_ls_power:           Button("a_ls_power");
+button_ss_power:           Button("a_ss_power");
+button_feed_tray:          AutoResetButton("a_feed_tray");
+button_holder_opened:      Button("a_holder_opened");

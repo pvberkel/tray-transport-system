@@ -1,0 +1,124 @@
+import "trayTS-plant-io.cif";
+
+plant automaton def Pusher(alg bool a_power; alg real maximum):
+    event on, off;
+
+    const real V_PUSHER = 10;
+    const real Y_DOWN = 0;
+    alg real Y_UP = -maximum;
+
+    cont y = Y_DOWN;
+
+    location down:
+        initial;
+        equation y' = 0;
+        edge when a_power goto moving_up;
+
+    location moving_up:
+        equation y' = -V_PUSHER;
+        edge on when y <= Y_UP goto up;
+        edge when not a_power goto moving_down;
+
+    location moving_down:
+        equation y' = V_PUSHER;
+        edge off when y >= Y_DOWN goto down;
+        edge when a_power goto moving_up;
+
+    location up:
+        equation y' = 0;
+        edge when not a_power goto moving_down;
+end
+
+pusher_ls: Pusher(a_ls_power, 15);
+pusher_ss: Pusher(a_ss_power, 3.5);
+
+event got_product;
+
+plant automaton pusher_tray:
+    const real MAXX  = 4;
+    const real MINX  = 0;
+    const real VPUSH = 2;
+
+    event exit, new_product;
+
+    cont y_product = 0 der v_product; // initial position 0.5
+
+    disc bool has_prod = true;
+
+    alg real v_product =
+                  if has_prod
+                     and (a_ls_power or a_ss_power)
+                     and y_product - 3.5 >= (pusher_ls.y + pusher_ss.y) : (pusher_ls.y' + pusher_ss.y')
+                else 0
+                 end;
+
+    location no_product:
+        initial;
+        edge got_product goto has_product;
+
+    location has_product:
+        edge exit        when has_prod and pusher_ls.up and pusher_ss.up do y_product := 0, has_prod := false goto no_product;
+        edge new_product when not has_prod and pusher_ls.down and pusher_ss.down do y_product := 0, has_prod := true;
+
+end
+
+plant automaton Conveyer1:
+    event wait;
+    const real T_DELTA = -1;
+    const real T_DELAY = 2;
+
+    cont t = T_DELAY;
+
+    location idle:
+        initial;
+        equation t' = T_DELTA;
+        edge wait when t <= 0 do t := T_DELAY goto waiting;
+
+    location waiting:
+        equation t' = 0;
+        edge when a_feed_tray goto transfering;
+
+    location transfering:
+        equation t' = 0;
+        edge when (entering_tray.at_tray2 or entering_tray.hidden) do t := T_DELAY goto idle;
+end
+
+plant automaton Conveyer2:
+    location idle:
+        initial;
+        edge when Conveyer1.transfering goto transfering;
+
+    location transfering:
+        edge when entering_tray.at_tray2 goto idle;
+end
+
+plant automaton entering_tray:
+    const real V = 10;
+    cont x = 0;
+
+    location hidden:
+        initial;
+        equation x' = 0;
+        edge when Conveyer1.waiting goto at_tray1;
+
+    location at_tray1:
+        equation x' = 0;
+        edge when a_feed_tray goto transfering;
+
+    location transfering:
+        equation x' = V;
+        edge got_product when x >= 57 goto at_tray2;
+
+    location at_tray2:
+        equation x' = 0;
+        edge when pusher_tray.has_prod do x:= 0 goto hidden;
+end
+
+plant automaton holders:
+    location closed:
+        initial;
+        edge when a_holder_opened goto opened;
+
+    location opened:
+        edge when not a_holder_opened goto closed;
+end

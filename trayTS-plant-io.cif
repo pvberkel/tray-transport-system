@@ -1,0 +1,16 @@
+import "trayTS-plant.cif";
+
+// INPUTS
+input bool a_ls_power;
+input bool a_ss_power;
+input bool a_feed_tray;
+input bool a_holder_opened;
+
+// OUTPUTS
+alg bool s_pusher_is_up     = pusher_ls.up and pusher_ss.up;
+alg bool s_pusher_is_middle = pusher_ls.up and pusher_ss.down;
+alg bool s_pusher_is_down   = pusher_ls.down and pusher_ss.down;
+
+alg bool s_tray1            = entering_tray.at_tray1;
+alg bool s_tray2            = entering_tray.at_tray2;
+

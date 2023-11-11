@@ -1,0 +1,5 @@
+// Plants and requirements as input for supervisory controller synthesis.
+
+import "trayTS-plant.cif";
+
+requirement FIFO: holders.opened => pusher_ls.up;
